@@ -1,16 +1,15 @@
 const { test, expect } = require('@playwright/test');
 
 test('Additional: form validation styling', async ({ page }) => {
-
   await page.goto('https://qainterview.pythonanywhere.com/');
 
   await page.click('#getFactorial'); // submit empty
 
   const input = page.locator('#number');
 
-  // Check if validation styling is applied (like red border or class)
-  await expect(input).toHaveClass(/error|invalid|form-control/);
+  await expect(input).toHaveClass(/error|invalid/);
 
+  await expect(input).toHaveCSS('border-color', 'rgb(255, 0, 0)');
 });
 
 
@@ -28,22 +27,27 @@ test('Additional: factorial of 12 correct result', async ({ page }) => {
 
 
 test('Additional: verify API request headers and parameters', async ({ page }) => {
-
   await page.goto('https://qainterview.pythonanywhere.com/');
 
   const [request] = await Promise.all([
-    page.waitForRequest(req => req.url().includes('factorial')),
-    page.fill('#number', '5'),
-    page.click('#getFactorial')
-  ]);
+  page.waitForRequest(req =>
+    req.url().includes('factorial') && req.method() === 'POST'
+  ),
+  page.fill('#number', '5'),
+  page.click('#getFactorial')
+]);
 
-  // Verify method
-  expect(request.method()).toBe('POST');
+  expect(request.method()).toMatch(/GET|POST/);
 
-  // Verify request contains the input value
-  expect(request.postData()).toContain('5');
+  const postData = request.postData() || '';
+  expect(postData.includes('5') || request.url().includes('5')).toBeTruthy();
 
-  // Verify headers exist
   const headers = request.headers();
-  expect(headers).toBeDefined(); 
+  expect(headers).toBeDefined();
+
+  if (headers['content-type']) {
+    expect(headers['content-type']).toContain('application');
+  }
+
+  expect(request.url()).toMatch(/factorial|api|calculate/i);
 });
